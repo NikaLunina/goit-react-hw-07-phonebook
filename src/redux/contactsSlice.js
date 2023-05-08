@@ -1,35 +1,52 @@
-import { createSlice } from '@reduxjs/toolkit';
 
-const contactsInitialState = [];
+import { fetchContacts, addContact, deleteContact } from './operations';
+
+const { createSlice, isAnyOf } = require('@reduxjs/toolkit');
+
+const handlePending = state => {
+  state.isLoading = true;
+};
+
+const handleRejected = (state, action) => {
+  state.isLoading = false;
+  state.error = action.payload;
+};
+
+const handleFulfilled = state => {
+  state.isLoading = false;
+  state.error = null;
+};
+
+const arrThunks = [addContact, deleteContact, fetchContacts];
+
+const getActions = type => isAnyOf(...arrThunks.map(action => action[type]));
 
 const contactsSlice = createSlice({
   name: 'contacts',
-  initialState: contactsInitialState,
-  reducers: {
-    addContact(state, action) {
-      state.push(action.payload);
-    },
-    // addTask: {
-    //     reducer(state, action) {
-    //       state.push(action.payload);
-    //     },
-    //     prepare(name , number) {
-    //       return {
-    //         payload: {
-    //           name,
-    //           number,
-    //           id: nanoid(),
+  initialState: {
+    items: [],
+    isLoading: false,
+    error: null,
+  },
 
-    //         },
-    //       };
-    //     },
-    //   },
-    deleteContact(state, action) {
-      const index = state.findIndex(contact => contact.id === action.payload);
-      state.splice(index, 1);
-    },
+  extraReducers: builder => {
+    builder
+      .addCase(fetchContacts.fulfilled, (state, action) => {
+        state.items = action.payload;
+      })
+      .addCase(addContact.fulfilled, (state, action) => {
+        state.items.push(action.payload);
+      })
+      .addCase(deleteContact.fulfilled, (state, action) => {
+        const index = state.items.findIndex(
+          contact => contact.id === action.payload.id
+        );
+        state.items.splice(index, 1);
+      })
+      .addMatcher(getActions('pending'), handlePending)
+      .addMatcher(getActions('rejected'), handleRejected)
+      .addMatcher(getActions('fulfilled'), handleFulfilled);
   },
 });
 
-export const { addContact, deleteContact } = contactsSlice.actions;
 export const contactsReducer = contactsSlice.reducer;
